@@ -1,0 +1,109 @@
+	# gawk profile, created Thu Jan 30 15:44:47 2014
+
+	# BEGIN block(s)
+
+	BEGIN {
+     1  	col_mask_string = "Timestamp,Original timestamp,.dict.srcip,.dict.srcport,.dict.dstip,.dict.dstport,.dict.cee.action"
+     1  	col_cnt = split(col_mask_string, col_mask, ",")
+	}
+
+	# Rule(s)
+
+293711  {
+293711  	num_fields = parse_csv($0, csv, ",", "\"", "\"", "\\n", 1)
+293711  	if (NR == 1) { # 1
+    22  		for (i = 0; i < num_fields; i++) {
+    22  			col_name[csv[i]] = i
+			}
+293710  	} else {
+293710  		if (num_fields < 0) {
+				printf "ERROR: %s (%d) -> %s\n", csverr, num_fields, $0
+293710  		} else {
+1762260  			for (i = 1; i < col_cnt; i++) {
+1762260  				printf "%s,", csv[col_name[col_mask[i]]]
+				}
+293710  			printf "%s\n", csv[col_name[col_mask[col_cnt]]]
+			}
+		}
+	}
+
+
+	# Functions, listed alphabetically
+
+293711  function parse_csv(string, csv, sep, quote, escape, newline, trim, fields, pos, strtrim)
+	{
+293711  	if (length(string) == 0) {
+			return 0
+		}
+293711  	string = sep string
+293711  	fields = 0
+6461642  	while (length(string) > 0) {
+6461642  		if (trim && substr(string, 2, 1) == " ") {
+				if (length(string) == 1) {
+					return fields
+				}
+				string = substr(string, 2)
+				continue
+			}
+6461642  		strtrim = 0
+6461642  		if (substr(string, 2, 1) == quote) { # 6461642
+6461642  			pos = 2
+171554289  			do {
+171554289  				pos++
+171554289  				if (pos != length(string) && (substr(string, pos, 1) == escape && (substr(string, pos + 1, 1) == quote || substr(string, pos + 1, 1) == escape))) { # 4
+     4  					string = substr(string, 1, pos - 1) substr(string, pos + 1)
+171554285  				} else {
+171554285  					if (substr(string, pos, 1) == quote) { # 6461642
+6461642  						strtrim = 1
+165092643  					} else {
+165092643  						if (newline && pos >= length(string)) {
+								if ((getline) == -1) {
+									csverr = "Unable to read the next line."
+									return -1
+								}
+								string = string newline $0
+							}
+						}
+					}
+				} while (pos < length(string) && strtrim == 0)
+6461642  			if (strtrim == 0) {
+					csverr = "Missing end quote."
+					return -2
+				}
+			} else {
+				if (length(string) == 1 || substr(string, 2, 1) == sep) {
+					csv[fields] = ""
+					fields++
+					if (length(string) == 1) {
+						return fields
+					}
+					string = substr(string, 2)
+					continue
+				}
+				pos = index(substr(string, 2), sep)
+				if (pos == 0) {
+					csv[fields] = substr(string, 2)
+					fields++
+					return fields
+				}
+			}
+6461642  		if (trim && (pos != length(string) && substr(string, pos + strtrim, 1) == " ")) {
+				trim = strtrim
+				while (pos < length(string) && substr(string, pos + trim, 1) == " ") {
+					trim++
+				}
+				string = substr(string, 1, pos + strtrim - 1) substr(string, pos + trim)
+				if (! strtrim) {
+					pos -= trim
+				}
+			}
+6461642  		if (pos != length(string) && substr(string, pos + 1, 1) != sep) {
+				csverr = "Missing separator."
+				return -3
+			}
+6461642  		csv[fields] = substr(string, 2 + strtrim, pos - (1 + strtrim * 2))
+6461642  		fields++
+6461642  		string = substr(string, pos + 1)
+		}
+293711  	return fields
+	}
